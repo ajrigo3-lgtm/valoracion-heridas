@@ -1,0 +1,1969 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VisiWound Pro | Sistema Clínico de Planimetría y Diagnóstico de Heridas</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome for medical icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+              800: '#115e59',
+              900: '#134e4a',
+            },
+            clinical: {
+              granulation: '#e11d48',
+              slough: '#eab308',
+              necrotic: '#1e293b',
+              epithelial: '#f472b6',
+              safe: '#16a34a',
+              danger: '#dc2626',
+              warning: '#d97706'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+    }
+    .canvas-container {
+      position: relative;
+      touch-action: none;
+      user-select: none;
+    }
+    canvas {
+      cursor: crosshair;
+    }
+    /* Print Styles */
+    @media print {
+      body {
+        background: white !important;
+        color: black !important;
+        font-size: 11pt;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-only {
+        display: block !important;
+      }
+      .print-break {
+        page-break-before: always;
+      }
+      .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl {
+        box-shadow: none !important;
+      }
+      .border {
+        border-color: #cbd5e1 !important;
+      }
+    }
+    .print-only {
+      display: none;
+    }
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-700 to-teal-500 flex items-center justify-center text-white shadow-md shadow-teal-500/20">
+          <i class="fa-solid fa-notes-medical text-lg"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="font-bold text-lg text-slate-900 leading-none">VisiWound <span class="text-teal-600 font-semibold text-xs tracking-wider uppercase bg-teal-50 px-2 py-0.5 rounded border border-teal-200">Pro 3.0</span></h1>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+              <i class="fa-solid fa-shield-halved mr-1 text-[10px]"></i> Guía Basada en Evidencia
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 font-medium">Planimetría Digital, Diagnóstico Diferencial & Prescripción Tópica</p>
+        </div>
+      </div>
+
+      <!-- Quick action buttons -->
+      <div class="flex items-center space-x-2 no-print">
+        <button id="btnLoadDemo" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 transition flex items-center">
+          <i class="fa-regular fa-image mr-1.5 text-teal-600"></i> Cargar Caso Demo
+        </button>
+        <button id="btnPrintReport" class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-teal-600 text-white hover:bg-teal-700 shadow-sm transition flex items-center">
+          <i class="fa-solid fa-file-arrow-down mr-1.5"></i> Exportar Informe
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1">
+    
+    <!-- Printable Header (Visible only in print) -->
+    <div class="print-only mb-6 border-b pb-4">
+      <div class="flex justify-between items-start">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900">INFORME DE VALORACIÓN INTEGRAL DE HERIDAS</h1>
+          <p class="text-sm text-slate-600">Unidad Avanzada de Cicatrización y Manejo de Tejidos Complejos</p>
+        </div>
+        <div class="text-right text-xs text-slate-500">
+          <p id="printTimestamp">Fecha: --/--/----</p>
+          <p>ID Registro: <span id="printRecordId" class="font-mono font-semibold">VW-2026-X</span></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main 2-Column Responsive Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- LEFT COLUMN: Canvas Planimetry & Colorimetry Engine (5 Cols) -->
+      <div class="lg:col-span-6 space-y-6">
+        
+        <!-- Canvas Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
+              <h2 class="font-semibold text-sm text-slate-800">Módulo de Planimetría & Colorimetría</h2>
+            </div>
+            <!-- Mode Switcher -->
+            <div class="inline-flex p-1 bg-slate-200/80 rounded-lg text-xs font-medium no-print">
+              <button id="btnToolCalibrate" class="px-3 py-1 rounded-md transition text-slate-700 hover:text-slate-900 flex items-center gap-1.5" title="Trazar 2 puntos sobre testigo métrico">
+                <i class="fa-solid fa-ruler"></i> Calibrar Testigo
+              </button>
+              <button id="btnToolWound" class="px-3 py-1 rounded-md transition bg-teal-600 text-white shadow-xs flex items-center gap-1.5" title="Marcar puntos delimitando el lecho">
+                <i class="fa-solid fa-draw-polygon"></i> Delimitar Lesión
+              </button>
+            </div>
+          </div>
+
+          <!-- Canvas Workspace Toolbar -->
+          <div class="p-3 border-b border-slate-100 bg-white flex flex-wrap items-center justify-between gap-2 text-xs no-print">
+            <div class="flex items-center space-x-2">
+              <!-- Upload image -->
+              <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 font-medium inline-flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-upload text-teal-600"></i> Subir Imagen
+                <input type="file" id="imageInput" accept="image/*" class="hidden">
+              </label>
+
+              <!-- Calibration distance input -->
+              <div class="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+                <span class="text-slate-500 font-medium text-[11px]">Testigo:</span>
+                <input type="number" id="calibrationRealLength" value="1.0" step="0.1" min="0.1" class="w-12 text-center text-xs font-semibold bg-white border border-slate-200 rounded px-1 py-0.5 text-slate-800 focus:outline-teal-500">
+                <span class="text-slate-500 font-medium text-[11px]">cm</span>
+              </div>
+            </div>
+
+            <!-- Canvas Operations -->
+            <div class="flex items-center space-x-1.5">
+              <button id="btnUndoPoint" class="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 border border-slate-200 transition" title="Deshacer último punto">
+                <i class="fa-solid fa-rotate-left"></i>
+              </button>
+              <button id="btnClearWound" class="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 border border-slate-200 text-xs font-medium transition" title="Limpiar contorno">
+                <i class="fa-solid fa-trash-can mr-1 text-slate-400"></i> Limpiar
+              </button>
+              <button id="btnAnalyzeColor" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200 rounded-lg transition flex items-center gap-1">
+                <i class="fa-solid fa-chart-pie"></i> Analizar Tejidos
+              </button>
+            </div>
+          </div>
+
+          <!-- Canvas Interactive Viewport -->
+          <div class="relative w-full bg-slate-900 flex items-center justify-center min-h-[380px] max-h-[460px] overflow-hidden select-none" id="canvasViewport">
+            <canvas id="woundCanvas" class="max-w-full max-h-[460px] block"></canvas>
+            
+            <!-- Instructions overlay when empty -->
+            <div id="canvasEmptyState" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-slate-300 pointer-events-none bg-slate-950/80 backdrop-blur-xs">
+              <div class="w-16 h-16 rounded-2xl bg-slate-800/80 flex items-center justify-center mb-3 text-teal-400 border border-slate-700">
+                <i class="fa-solid fa-camera-retro text-2xl"></i>
+              </div>
+              <h3 class="text-sm font-semibold text-white">Suba una fotografía clínica con testigo métrico</h3>
+              <p class="text-xs text-slate-400 max-w-sm mt-1">Coloque un testigo (regla milimetrada o adhesivo de 1 cm) junto a la lesión para garantizar una calibración de alta precisión.</p>
+              <span class="mt-3 text-[11px] bg-slate-800 px-3 py-1 rounded-full text-slate-300 border border-slate-700">Arrastre aquí una imagen o presione "Subir Imagen"</span>
+            </div>
+
+            <!-- Canvas Toast Notifications -->
+            <div id="canvasToast" class="absolute bottom-3 left-1/2 transform -translate-x-1/2 px-3 py-1.5 rounded-full bg-slate-900/90 text-white text-xs font-medium border border-slate-700 pointer-events-none opacity-0 transition-opacity duration-300 flex items-center gap-2">
+              <span id="canvasToastText">Calibración completada</span>
+            </div>
+          </div>
+
+          <!-- Guidance / Current Mode Status Bar -->
+          <div class="px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <i id="modeIcon" class="fa-solid fa-draw-polygon text-teal-600"></i>
+              <span id="modeDescription" class="font-medium">Modo: Delimitar lesión. Haga clic alrededor del borde para trazar el polígono.</span>
+            </div>
+            <span id="calibrationStatusBadge" class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">
+              <i class="fa-solid fa-triangle-exclamation mr-1"></i> Sin calibrar (1 px = 0.05 cm est.)
+            </span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Metrics Widget -->
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center">
+              <i class="fa-solid fa-ruler-combined text-teal-600 mr-2"></i> Mediciones de Planimetría
+            </h3>
+            <div class="grid grid-cols-2 gap-2 text-center">
+              <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                <span class="text-[11px] text-slate-500 block font-medium">Área Superficial</span>
+                <span id="metricArea" class="text-lg font-bold text-teal-700">0.00</span>
+                <span class="text-xs text-slate-400 font-semibold"> cm²</span>
+              </div>
+              <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                <span class="text-[11px] text-slate-500 block font-medium">Perímetro</span>
+                <span id="metricPerimeter" class="text-lg font-bold text-slate-800">0.0</span>
+                <span class="text-xs text-slate-400 font-semibold"> cm</span>
+              </div>
+              <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                <span class="text-[11px] text-slate-500 block font-medium">Longitud Máxima</span>
+                <span id="metricMajorAxis" class="text-sm font-bold text-slate-700">0.0</span>
+                <span class="text-xs text-slate-400 font-semibold"> cm</span>
+              </div>
+              <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                <span class="text-[11px] text-slate-500 block font-medium">Anchura Máxima</span>
+                <span id="metricMinorAxis" class="text-sm font-bold text-slate-700">0.0</span>
+                <span class="text-xs text-slate-400 font-semibold"> cm</span>
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-2 text-center">Cálculo de área mediante algoritmo Shoelace / Polígono de Gauss calibrado.</p>
+          </div>
+
+          <!-- Colorimetric Tissue Classification Widget -->
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center">
+                  <i class="fa-solid fa-palette text-indigo-600 mr-2"></i> Análisis Colorimétrico
+                </h3>
+                <span id="colorimetryConfidence" class="text-[10px] text-slate-400 font-mono">Esperando trazado</span>
+              </div>
+              
+              <!-- Stacked percentage bar -->
+              <div class="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner mb-3">
+                <div id="barGranulation" class="h-full bg-rose-500 transition-all duration-500" style="width: 0%" title="Granulación"></div>
+                <div id="barSlough" class="h-full bg-amber-400 transition-all duration-500" style="width: 0%" title="Esfacelo / Fibrina"></div>
+                <div id="barNecrotic" class="h-full bg-slate-900 transition-all duration-500" style="width: 0%" title="Necrosis / Escara"></div>
+                <div id="barEpithelial" class="h-full bg-pink-300 transition-all duration-500" style="width: 0%" title="Epitelización"></div>
+              </div>
+
+              <!-- Tissue Breakdown List -->
+              <div class="space-y-1.5 text-xs">
+                <div class="flex items-center justify-between">
+                  <span class="flex items-center text-slate-700 font-medium">
+                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500 mr-2 inline-block"></span> Granulación (Rojo vivo)
+                  </span>
+                  <span id="pctGranulation" class="font-bold text-slate-800">0%</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="flex items-center text-slate-700 font-medium">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400 mr-2 inline-block"></span> Esfacelos/Fibrina (Amarillo)
+                  </span>
+                  <span id="pctSlough" class="font-bold text-slate-800">0%</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="flex items-center text-slate-700 font-medium">
+                    <span class="w-2.5 h-2.5 rounded-full bg-slate-900 mr-2 inline-block"></span> Necrótico/Escara (Negro/Marrón)
+                  </span>
+                  <span id="pctNecrotic" class="font-bold text-slate-800">0%</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="flex items-center text-slate-700 font-medium">
+                    <span class="w-2.5 h-2.5 rounded-full bg-pink-300 mr-2 inline-block"></span> Epitelial (Rosado pálido)
+                  </span>
+                  <span id="pctEpithelial" class="font-bold text-slate-800">0%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+              <span class="text-[11px] text-slate-500">Predominancia:</span>
+              <span id="predominantTissueBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">Sin datos</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clinical Patient Baseline & Photo Details -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center">
+            <i class="fa-solid fa-hospital-user text-teal-600 mr-2"></i> Identificación del Episodio
+          </h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">ID / HC Paciente</label>
+              <input type="text" id="patientIdInput" value="PAC-44892" class="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:ring-1 focus:ring-teal-500">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Tiempo de Evolución</label>
+              <select id="woundChronicity" class="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:ring-1 focus:ring-teal-500">
+                <option value="acute">&lt; 4 semanas (Aguda)</option>
+                <option value="subacute">4 - 8 semanas</option>
+                <option value="chronic" selected>&gt; 8 semanas (Crónica estancada)</option>
+                <option value="recurrent">Recurrente / Recidivante</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Dolor EVA (0 - 10)</label>
+              <div class="flex items-center space-x-2">
+                <input type="range" id="painScore" min="0" max="10" value="4" class="w-full accent-teal-600">
+                <span id="painScoreValue" class="text-xs font-bold w-6 text-slate-800">4</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="lg:col-span-6 space-y-6">
+
+        <!-- Assessment Form Container -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 flex items-center">
+                <i class="fa-solid fa-stethoscope text-teal-600 mr-2"></i> Batería Diagnóstica y Algoritmo Clínico
+              </h2>
+              <p class="text-xs text-slate-500">Flujo condicional adaptado a topografía, etiología y escalas validadas (RESVECH 2.0 / Braden / TIMES / DOMINATE).</p>
+            </div>
+            <span class="text-xs bg-teal-50 text-teal-700 font-semibold px-2.5 py-1 rounded-full border border-teal-200">
+              Paso Diagnóstico
+            </span>
+          </div>
+
+          <!-- Section 1: Anatomical Location & Vascular Trigger -->
+          <div class="space-y-3">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+              1. Localización Anatómica
+            </label>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <label class="location-btn cursor-pointer flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 hover:border-teal-500 bg-slate-50 transition text-center">
+                <input type="radio" name="anatomicalLocation" value="leg" class="hidden" checked>
+                <i class="fa-solid fa-person-walking text-slate-600 text-lg mb-1"></i>
+                <span class="font-semibold text-slate-800">Extremidad Inferior / Pierna</span>
+              </label>
+              <label class="location-btn cursor-pointer flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 hover:border-teal-500 bg-white transition text-center">
+                <input type="radio" name="anatomicalLocation" value="sacrum" class="hidden">
+                <i class="fa-solid fa-bed text-slate-600 text-lg mb-1"></i>
+                <span class="font-semibold text-slate-800">Sacro / Coxis</span>
+              </label>
+              <label class="location-btn cursor-pointer flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 hover:border-teal-500 bg-white transition text-center">
+                <input type="radio" name="anatomicalLocation" value="heel" class="hidden">
+                <i class="fa-solid fa-shoe-prints text-slate-600 text-lg mb-1"></i>
+                <span class="font-semibold text-slate-800">Talón / Calcáneo</span>
+              </label>
+              <label class="location-btn cursor-pointer flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 hover:border-teal-500 bg-white transition text-center">
+                <input type="radio" name="anatomicalLocation" value="foot" class="hidden">
+                <i class="fa-solid fa-socks text-slate-600 text-lg mb-1"></i>
+                <span class="font-semibold text-slate-800">Pie Diabético / Maleolar</span>
+              </label>
+              <label class="location-btn cursor-pointer flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 hover:border-teal-500 bg-white transition text-center">
+                <input type="radio" name="anatomicalLocation" value="trochanter" class="hidden">
+                <i class="fa-solid fa-bone text-slate-600 text-lg mb-1"></i>
+                <span class="font-semibold text-slate-800">Trocánter Mayor</span>
+              </label>
+              <label class="location-btn cursor-pointer flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 hover:border-teal-500 bg-white transition text-center">
+                <input type="radio" name="anatomicalLocation" value="abdomen" class="hidden">
+                <i class="fa-solid fa-user text-slate-600 text-lg mb-1"></i>
+                <span class="font-semibold text-slate-800">Abdomen / Quirúrgica</span>
+              </label>
+              <label class="location-btn cursor-pointer flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 hover:border-teal-500 bg-white transition text-center">
+                <input type="radio" name="anatomicalLocation" value="upper" class="hidden">
+                <i class="fa-solid fa-hand-dots text-slate-600 text-lg mb-1"></i>
+                <span class="font-semibold text-slate-800">Extremidad Superior</span>
+              </label>
+              <label class="location-btn cursor-pointer flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 hover:border-teal-500 bg-white transition text-center">
+                <input type="radio" name="anatomicalLocation" value="other" class="hidden">
+                <i class="fa-solid fa-ellipsis text-slate-600 text-lg mb-1"></i>
+                <span class="font-semibold text-slate-800">Otra Localización</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="vascularBlock" class="p-4 rounded-xl border-2 border-amber-300 bg-amber-50/70 space-y-3 transition-all">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-heart-pulse text-amber-600 text-base"></i>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-amber-900">
+                  Screening Vascular Obligatorio (Herida en Extremidad Inferior)
+                </h4>
+              </div>
+              <span class="text-[10px] bg-amber-200 text-amber-900 font-semibold px-2 py-0.5 rounded">Consenso EWMA</span>
+            </div>
+            <p class="text-xs text-amber-800">
+              Toda herida en miembro inferior requiere determinación de perfusión arterial antes de prescribir compresión o desbridamiento cortante activo.
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Índice Tobillo-Brazo (ITB / ABI)</label>
+                <select id="itbSelect" class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-medium text-slate-800 focus:ring-1 focus:ring-teal-500">
+                  <option value="normal" selected>0.9 - 1.2 (Normal / Apto para alta compresión)</option>
+                  <option value="mild">0.8 - 0.89 (Arteriopatía leve / Compresión moderada)</option>
+                  <option value="moderate">0.5 - 0.79 (Arteriopatía moderada / Compresión reducida máx 20-30 mmHg con supervisión)</option>
+                  <option value="severe">&lt; 0.5 (Arteriopatía severa / CONTRAINDICADA COMPRESIÓN)</option>
+                  <option value="incompressible">&gt; 1.30 (Arterias incompresibles / Calcificación - Requiere IDB)</option>
+                  <option value="not_done">No valorable aún (Pendiente doppler)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Índice Dedo-Brazo (IDB / TBI) o Pulsos Distales</label>
+                <select id="idbSelect" class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-medium text-slate-800">
+                  <option value="normal" selected>Pulsos pedio y tibial posterior presentes / IDB &ge; 0.7</option>
+                  <option value="weak">Pulsos débiles / IDB 0.5 - 0.69</option>
+                  <option value="absent">Pulsos distales ausentes / IDB &lt; 0.5 (Isquemia crítica)</option>
+                  <option value="not_applicable">No precisado</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Suspected Primary Etiology -->
+          <div class="space-y-3">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+              2. Etiología Sospechada / Principal
+            </label>
+            <select id="etiologySelect" class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl font-semibold text-slate-800 focus:ring-2 focus:ring-teal-500">
+              <option value="venous">Úlcera Venosa (Insuficiencia Venosa Crónica / EVC)</option>
+              <option value="pressure">Lesión por Presión (UPP / LPP - EPUAP/NPUAP)</option>
+              <option value="arterial">Úlcera Isquémica / Arterial pura</option>
+              <option value="diabetic">Úlcera de Pie Diabético (Neuropática / Neuroisquémica)</option>
+              <option value="atypical">Lesión Atípica / Sistémica / Autoinmune (Pioderma, Vasculitis, Calcifilaxis)</option>
+              <option value="mixed">Úlcera Mixta (Arterio-venosa)</option>
+              <option value="surgical">Herida Quirúrgica Complicada o Traumática</option>
+            </select>
+          </div>
+
+          <!-- SUBMODULE A: Pressure Ulcer Specifics -->
+          <div id="sectionUPP" class="hidden p-4 rounded-xl border border-blue-200 bg-blue-50/50 space-y-4">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-blue-900 flex items-center">
+                <i class="fa-solid fa-bed-pulse mr-2 text-blue-600"></i> Módulo Específico: Lesión por Presión (UPP)
+              </h4>
+              <span class="text-[10px] bg-blue-100 text-blue-800 font-semibold px-2 py-0.5 rounded">EPUAP / NPUAP</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Estadificación Clínica EPUAP</label>
+                <select id="uppStageSelect" class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-800">
+                  <option value="grade1">Categoría/Grado I: Eritema no blanqueable en piel íntegra</option>
+                  <option value="grade2">Categoría/Grado II: Pérdida de espesor parcial (dermis / ampolla)</option>
+                  <option value="grade3" selected>Categoría/Grado III: Pérdida total de grosor cutáneo (tejido subcutáneo visible)</option>
+                  <option value="grade4">Categoría/Grado IV: Pérdida total de espesor con exposición de hueso, tendón o músculo</option>
+                  <option value="unstageable">Inclasificable: Base cubierta por esfacelo/escara que oculta profundidad</option>
+                  <option value="dti">Sospecha de Lesión de Tejidos Profundos (LTI/DTI)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Escala de Braden (Riesgo)</label>
+                <div class="flex items-center space-x-2">
+                  <input type="range" id="bradenInput" min="6" max="23" value="13" class="w-full accent-blue-600">
+                  <span id="bradenValueBadge" class="text-xs font-bold px-2 py-1 rounded bg-amber-100 text-amber-800">13 (Riesgo Moderado)</span>
+                </div>
+                <span class="text-[10px] text-slate-500 block mt-1">&le;12 Alto Riesgo | 13-14 Moderado | 15-18 Bajo</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUBMODULE B: Venous Ulcer Specifics -->
+          <div id="sectionVenous" class="p-4 rounded-xl border border-sky-200 bg-sky-50/50 space-y-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-sky-900 flex items-center">
+              <i class="fa-solid fa-water mr-2 text-sky-600"></i> Parámetros de Insuficiencia Venosa (C6 CEAP)
+            </h4>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200">
+                <input type="checkbox" id="venousEdema" checked class="rounded text-sky-600 focus:ring-0">
+                <span class="text-slate-700 font-medium">Edema maleolar/pretibial</span>
+              </label>
+              <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200">
+                <input type="checkbox" id="venousLipoderm" checked class="rounded text-sky-600 focus:ring-0">
+                <span class="text-slate-700 font-medium">Lipodermatoesclerosis</span>
+              </label>
+              <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200">
+                <input type="checkbox" id="venousOchre" checked class="rounded text-sky-600 focus:ring-0">
+                <span class="text-slate-700 font-medium">Dermatitis ocre / Hemosiderina</span>
+              </label>
+              <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200">
+                <input type="checkbox" id="venousEczema" class="rounded text-sky-600 focus:ring-0">
+                <span class="text-slate-700 font-medium">Eccema de estasis perilesional</span>
+              </label>
+              <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200">
+                <input type="checkbox" id="venousAtrophy" class="rounded text-sky-600 focus:ring-0">
+                <span class="text-slate-700 font-medium">Atrofia blanca de Milian</span>
+              </label>
+              <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200">
+                <input type="checkbox" id="venousExudateHigh" checked class="rounded text-sky-600 focus:ring-0">
+                <span class="text-slate-700 font-medium">Exudado abundante típico</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- SUBMODULE C: Diabetic Foot Specifics -->
+          <div id="sectionDiabetic" class="hidden p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center">
+              <i class="fa-solid fa-shoe-prints mr-2 text-emerald-600"></i> Parámetros de Pie Diabético (IWGDF)
+            </h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Clasificación de Wagner / San Antonio</label>
+                <select id="wagnerSelect" class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-800">
+                  <option value="w1">Wagner 1: Úlcera superficial sin afectación tendinosa</option>
+                  <option value="w2" selected>Wagner 2: Úlcera profunda hasta tendón, cápsula articular</option>
+                  <option value="w3">Wagner 3: Úlcera profunda con absceso, osteomielitis o sepsis articular</option>
+                  <option value="w4">Wagner 4: Gangrena localizada (dedo, antepié)</option>
+                  <option value="w5">Wagner 5: Gangrena extensa del pie completo</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Sensibilidad Protectora (Monofilamento 10g)</label>
+                <select id="monofilamentSelect" class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-800">
+                  <option value="lost" selected>Sensibilidad abolida (Neuropatía periférica confirmada)</option>
+                  <option value="preserved">Sensibilidad conservada</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUBMODULE D: Atypical / Autoimmune Criteria -->
+          <div id="sectionAtypical" class="hidden p-4 rounded-xl border border-purple-200 bg-purple-50/50 space-y-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-purple-900 flex items-center">
+              <i class="fa-solid fa-dna mr-2 text-purple-600"></i> Criterios de Lesión Atípica / Autoinmune (Pioderma / Vasculitis)
+            </h4>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200">
+                <input type="checkbox" id="atypicalViolaceous" checked class="rounded text-purple-600 focus:ring-0">
+                <span class="text-slate-700 font-medium">Borde violáceo y socavado</span>
+              </label>
+              <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200">
+                <input type="checkbox" id="atypicalPathergy" checked class="rounded text-purple-600 focus:ring-0">
+                <span class="text-slate-700 font-medium">Fenómeno de patergia (empeora tras trauma o desbridamiento)</span>
+              </label>
+              <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200">
+                <input type="checkbox" id="atypicalPain" checked class="rounded text-purple-600 focus:ring-0">
+                <span class="text-slate-700 font-medium">Dolor desproporcionado al tamaño</span>
+              </label>
+              <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200">
+                <input type="checkbox" id="atypicalAutoimmuneHistory" class="rounded text-purple-600 focus:ring-0">
+                <span class="text-slate-700 font-medium">EII / Artritis / Neoplasia hematológica</span>
+              </label>
+              <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200">
+                <input type="checkbox" id="atypicalCorticoids" class="rounded text-purple-600 focus:ring-0">
+                <span class="text-slate-700 font-medium">Buena respuesta a corticoterapia</span>
+              </label>
+            </div>
+            <div class="p-2 bg-purple-100/70 rounded-lg text-purple-900 text-[11px] font-semibold flex items-center gap-1.5">
+              <i class="fa-solid fa-triangle-exclamation text-purple-700"></i> ALERTA CLÍNICA: En Pioderma Gangrenoso, el desbridamiento quirúrgico/cortante agresivo está CONTRAINDICADO por patergia.
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                3. Valoración de Infección y Carga Bacteriana (IWII / NERDS & STONEES)
+              </label>
+              <span id="infectionStatusBadge" class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                Colonización baja
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <!-- NERDS (Colonización Crítica / Biofilm Superficial) -->
+              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <div class="flex items-center justify-between text-slate-700 font-bold border-b pb-1">
+                  <span>NERDS (Infección Local / Biofilm)</span>
+                  <span class="text-[10px] text-teal-600">Tratamiento Tópico</span>
+                </div>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="nerdNonHealing" class="infection-check rounded text-teal-600">
+                  <span><strong>N:</strong> Retraso en cicatrización / Detención</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="nerdExudate" checked class="infection-check rounded text-teal-600">
+                  <span><strong>E:</strong> Aumento anómalo de exudado seroso</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="nerdRedTissue" checked class="infection-check rounded text-teal-600">
+                  <span><strong>R:</strong> Granulación friable, exuberante y sangrante</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="nerdDebris" checked class="infection-check rounded text-teal-600">
+                  <span><strong>D:</strong> Restos esfacelares recurrentes / biofilm visible</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="nerdSmell" class="infection-check rounded text-teal-600">
+                  <span><strong>S:</strong> Olor persistente tras lavado profundo</span>
+                </label>
+              </div>
+
+              <!-- STONEES (Infección Tisular Profunda / Sistémica) -->
+              <div class="p-3 rounded-xl bg-rose-50/60 border border-rose-200 space-y-2">
+                <div class="flex items-center justify-between text-rose-900 font-bold border-b border-rose-200 pb-1">
+                  <span>STONEES (Infección Tisular / Diseminada)</span>
+                  <span class="text-[10px] text-rose-600">Alerta Sistémica</span>
+                </div>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="stoneeSize" class="infection-check rounded text-rose-600">
+                  <span><strong>S:</strong> Aumento de tamaño / Lesiones satélite</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="stoneeTemp" class="infection-check rounded text-rose-600">
+                  <span><strong>T:</strong> Calor local perilesional &gt; 2-3°C</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="stoneeOs" class="infection-check rounded text-rose-600">
+                  <span><strong>O:</strong> Sondeo a hueso positivo (Probe-to-bone)</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="stoneeNew" class="infection-check rounded text-rose-600">
+                  <span><strong>N:</strong> Nueva área de necrosis o cavitación</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="stoneeErythema" class="infection-check rounded text-rose-600">
+                  <span><strong>E:</strong> Eritema perilesional difuso &gt; 2 cm / Celulitis</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="stoneeSmell" class="infection-check rounded text-rose-600">
+                  <span><strong>S:</strong> Supuración franca / Síntomas sistémicos (Fiebre)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="flex items-center justify-between border-b pb-1">
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                4. Marco TIMES & Escala RESVECH 2.0 Integrada
+              </label>
+              <span id="resvechScoreBadge" class="text-xs font-bold text-teal-700 bg-teal-100 px-2 py-0.5 rounded">
+                RESVECH 2.0: 18 / 35 pts
+              </span>
+            </div>
+
+            <!-- Parameters Grid for RESVECH / TIMES -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label class="block font-medium text-slate-700 mb-1">T - Tejido en el lecho (RESVECH)</label>
+                <select id="resvechTissue" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+                  <option value="0">100% Tejido de epitelización (0 pts)</option>
+                  <option value="1">Granulación &gt; 75% (1 pt)</option>
+                  <option value="2" selected>Esfacelo / Fibrina 25-75% (2 pts)</option>
+                  <option value="3">Esfacelo / Fibrina &gt; 75% (3 pts)</option>
+                  <option value="4">Tejido necrótico seco / negro &gt; 25% (4 pts)</option>
+                  <option value="5">Tejido necrótico húmedo / esfacelo adherido masivo (5 pts)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-medium text-slate-700 mb-1">M - Exudado: Cantidad y Tipo (Moisture)</label>
+                <select id="resvechExudate" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+                  <option value="0">Nulo / Lecho seco (0 pts)</option>
+                  <option value="1">Escaso (Seroso limpio) (1 pt)</option>
+                  <option value="2" selected>Moderado (Mantiene humedad sin macerar apósito) (2 pts)</option>
+                  <option value="3">Abundante (Maceración de bordes / Saturation) (3 pts)</option>
+                  <option value="4">Muy abundante purulento / hemopurulento (4 pts)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-medium text-slate-700 mb-1">E - Bordes de la herida (Edge)</label>
+                <select id="resvechEdge" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+                  <option value="0">Indiferenciados / En fase de epitelización activa (0 pts)</option>
+                  <option value="1">Definidos no adheridos (1 pt)</option>
+                  <option value="2" selected>Engrosados / Rodados / Hiperqueratósicos (2 pts)</option>
+                  <option value="3">Socavados / Cavitados / Detenidos (3 pts)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-medium text-slate-700 mb-1">S - Piel Perilesional (Surrounding skin)</label>
+                <select id="resvechSkin" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+                  <option value="0">Sana e hidratada (0 pts)</option>
+                  <option value="1">Deshidratada / Descamativa (1 pt)</option>
+                  <option value="2" selected>Macerada por exceso de humedad (2 pts)</option>
+                  <option value="3">Eritematosa / Eccematosa / Inflamada (3 pts)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-medium text-slate-700 mb-1">Profundidad de la Afectación</label>
+                <select id="resvechDepth" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+                  <option value="1">Epidermis / Dermis superficial (1 pt)</option>
+                  <option value="2" selected>Dermis profunda / Hipodermis (2 pts)</option>
+                  <option value="3">Fascia / Músculo (3 pts)</option>
+                  <option value="4">Hueso / Tendón expuesto (4 pts)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-medium text-slate-700 mb-1">Tunelizaciones o Fístulas</label>
+                <select id="resvechTunnel" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+                  <option value="0" selected>Sin tunelizaciones ni trayectos (0 pts)</option>
+                  <option value="1">Tunelización &lt; 2 cm (1 pt)</option>
+                  <option value="2">Tunelización &gt; 2 cm o múltiples trayectos (2 pts)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Button for Recommendation Regeneration -->
+          <div class="pt-2 no-print">
+            <button id="btnComputeRecommendations" class="w-full py-3 bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-bold rounded-xl shadow-md transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Generar Recomendación Terapéutica Basada en Evidencia
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div id="treatmentResultsSection" class="mt-8 space-y-6">
+      
+      <!-- Critical Safety & Contraindication Alerts Box -->
+      <div id="safetyAlertContainer" class="hidden rounded-2xl border p-4 space-y-2">
+        <!-- Injected dynamically -->
+      </div>
+
+      <!-- Main Recommendations Grid -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-prescription-bottle-medical"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Plan Terapéutico Personalizado y Basado en Evidencia</h3>
+              <p class="text-xs text-slate-500">Formulado conforme a las guías EWMA, WUWHS, GNEAUPP y criterios de compatibilidad biológica.</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2 text-xs">
+            <span class="px-2.5 py-1 rounded-full bg-slate-100 font-medium text-slate-700">Algoritmo DOMINATE + TIME</span>
+          </div>
+        </div>
+
+        <!-- 4 Pillars of Evidence-Based Healing Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          
+          <!-- Pillar 1: Preparación del Lecho & Limpieza -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center space-x-2 text-teal-700 mb-2 font-bold text-sm">
+                <i class="fa-solid fa-shower"></i>
+                <span>1. Limpieza y Desbridamiento</span>
+              </div>
+              <div id="recDebridementText" class="text-xs text-slate-700 space-y-2">
+                <!-- Dynamic text -->
+              </div>
+            </div>
+            <div class="mt-4 pt-2 border-t border-slate-200 text-[11px] text-teal-800 font-medium">
+              Objetivo: Romper biofilm y reducir carga necrótica sin trauma tisular.
+            </div>
+          </div>
+
+          <!-- Pillar 2: Control de Carga Bacteriana & Infección -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center space-x-2 text-indigo-700 mb-2 font-bold text-sm">
+                <i class="fa-solid fa-shield-virus"></i>
+                <span>2. Antimicrobianos & Biofilm</span>
+              </div>
+              <div id="recInfectionText" class="text-xs text-slate-700 space-y-2">
+                <!-- Dynamic text -->
+              </div>
+            </div>
+            <div class="mt-4 pt-2 border-t border-slate-200 text-[11px] text-indigo-800 font-medium">
+              Estrategia: Rotación racional de antisépticos con surfactantes (PHMB / Octenidina / Ác. Hipocloroso).
+            </div>
+          </div>
+
+          <!-- Pillar 3: Gestión del Exudado & Apósito Primario -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center space-x-2 text-cyan-700 mb-2 font-bold text-sm">
+                <i class="fa-solid fa-bandage"></i>
+                <span>3. Manejo de Humedad (Exudado)</span>
+              </div>
+              <div id="recMoistureText" class="text-xs text-slate-700 space-y-2">
+                <!-- Dynamic text -->
+              </div>
+            </div>
+            <div class="mt-4 pt-2 border-t border-slate-200 text-[11px] text-cyan-800 font-medium">
+              Balance: Humedad óptima evitando maceración con alginatos o hidrofibras.
+            </div>
+          </div>
+
+          <!-- Pillar 4: Terapia Etiológica Fundamental -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center space-x-2 text-amber-700 mb-2 font-bold text-sm">
+                <i class="fa-solid fa-compress"></i>
+                <span>4. Causa Etiológica & Descarga</span>
+              </div>
+              <div id="recEtiologyText" class="text-xs text-slate-700 space-y-2">
+                <!-- Dynamic text -->
+              </div>
+            </div>
+            <div class="mt-4 pt-2 border-t border-slate-200 text-[11px] text-amber-800 font-medium">
+              Esencial: Sin tratar la etiología de base, la herida recidivará o no cerrará.
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Incompatibility Warning Matrix (Crucial Clinical Feature) -->
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+          <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center">
+            <i class="fa-solid fa-ban text-rose-500 mr-2"></i> Incompatibilidades Farmacotópicas Evitadas en Esta Pauta
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-600">
+            <div class="flex items-start space-x-2">
+              <i class="fa-solid fa-circle-xmark text-rose-500 mt-0.5"></i>
+              <span><strong>Colagenasa + Plata / Yodo:</strong> Los iones metálicos pesados inactivan enzimáticamente la colagenasa.</span>
+            </div>
+            <div class="flex items-start space-x-2">
+              <i class="fa-solid fa-circle-xmark text-rose-500 mt-0.5"></i>
+              <span><strong>Alta Compresión + ITB &lt; 0.5:</strong> Riesgo de necrosis isquémica irreversible y amputación de extremidad.</span>
+            </div>
+            <div class="flex items-start space-x-2">
+              <i class="fa-solid fa-circle-xmark text-rose-500 mt-0.5"></i>
+              <span><strong>Vendas de crepé en Úlcera Venosa:</strong> Pierden tensión a los 20 min; no alcanzan la presión terapéutica requerida (&ge;40 mmHg).</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 py-4 mt-8 no-print">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+      <p>VisiWound Pro &copy; 2026. Sistema de Apoyo a la Decisión Clínica en Heridas Complejas. Basado en guías de práctica clínica EWMA, EPUAP, WUWHS y GNEAUPP.</p>
+    </div>
+  </footer>
+
+  <!-- Notification Toast Modal -->
+  <div id="globalToast" class="fixed top-20 right-6 max-w-sm bg-slate-900 text-white text-xs px-4 py-3 rounded-xl shadow-xl z-50 transform translate-y-10 opacity-0 pointer-events-none transition-all duration-300 flex items-center space-x-3">
+    <i class="fa-solid fa-circle-info text-teal-400 text-base" id="globalToastIcon"></i>
+    <span id="globalToastMessage">Mensaje informativo</span>
+  </div>
+
+  <script>
+    /**
+     * VisiWound Pro - Core Engine
+     * Architecture: Single-file vanilla JS engine with Canvas planimetry,
+     * Shoelace polygon metric evaluation, image pixel colorimetry sampling,
+     * conditional diagnostic routing, and evidence-based decision engine.
+     */
+
+    // App State Store
+    const state = {
+      image: null,
+      imageLoaded: false,
+      canvasScale: 1.0,
+      activeTool: 'wound', // 'calibrate' | 'wound'
+      calibration: {
+        points: [], // Array of 2 points: [{x, y}, {x, y}]
+        pixelDistance: null,
+        realDistanceCm: 1.0,
+        pixelsPerCm: null,
+        isCalibrated: false
+      },
+      woundPolygon: [], // Array of points: [{x, y}, ...]
+      metrics: {
+        areaCm2: 0,
+        perimeterCm: 0,
+        majorAxisCm: 0,
+        minorAxisCm: 0
+      },
+      colorimetry: {
+        granulation: 0,
+        slough: 0,
+        necrotic: 0,
+        epithelial: 0,
+        predominant: 'Sin datos'
+      },
+      diagnostic: {
+        location: 'leg',
+        etiology: 'venous',
+        itb: 'normal',
+        idb: 'normal',
+        braden: 13,
+        uppStage: 'grade3',
+        resvechTotal: 12
+      }
+    };
+
+    // DOM Elements Cache
+    const canvas = document.getElementById('woundCanvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const imageInput = document.getElementById('imageInput');
+    const emptyState = document.getElementById('canvasEmptyState');
+    const btnToolCalibrate = document.getElementById('btnToolCalibrate');
+    const btnToolWound = document.getElementById('btnToolWound');
+    const btnUndoPoint = document.getElementById('btnUndoPoint');
+    const btnClearWound = document.getElementById('btnClearWound');
+    const btnAnalyzeColor = document.getElementById('btnAnalyzeColor');
+    const btnLoadDemo = document.getElementById('btnLoadDemo');
+    const btnPrintReport = document.getElementById('btnPrintReport');
+    const btnComputeRecommendations = document.getElementById('btnComputeRecommendations');
+
+    // Labels & indicators
+    const modeDescription = document.getElementById('modeDescription');
+    const modeIcon = document.getElementById('modeIcon');
+    const calibrationStatusBadge = document.getElementById('calibrationStatusBadge');
+    const calibrationRealLength = document.getElementById('calibrationRealLength');
+
+    // Metrics DOM
+    const metricArea = document.getElementById('metricArea');
+    const metricPerimeter = document.getElementById('metricPerimeter');
+    const metricMajorAxis = document.getElementById('metricMajorAxis');
+    const metricMinorAxis = document.getElementById('metricMinorAxis');
+
+    // Colorimetry DOM
+    const barGranulation = document.getElementById('barGranulation');
+    const barSlough = document.getElementById('barSlough');
+    const barNecrotic = document.getElementById('barNecrotic');
+    const barEpithelial = document.getElementById('barEpithelial');
+    const pctGranulation = document.getElementById('pctGranulation');
+    const pctSlough = document.getElementById('pctSlough');
+    const pctNecrotic = document.getElementById('pctNecrotic');
+    const pctEpithelial = document.getElementById('pctEpithelial');
+    const predominantTissueBadge = document.getElementById('predominantTissueBadge');
+    const colorimetryConfidence = document.getElementById('colorimetryConfidence');
+
+    function initCanvasDimensions() {
+      const container = document.getElementById('canvasViewport');
+      const width = container.clientWidth || 600;
+      const height = Math.min(container.clientHeight || 420, 420);
+      
+      canvas.width = width;
+      canvas.height = height;
+      redrawCanvas();
+    }
+
+    window.addEventListener('resize', () => {
+      initCanvasDimensions();
+    });
+
+    // Helper: Show non-intrusive toast notification
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('globalToast');
+      const icon = document.getElementById('globalToastIcon');
+      const text = document.getElementById('globalToastMessage');
+      
+      text.innerText = message;
+      if (isError) {
+        toast.className = toast.className.replace('bg-slate-900', 'bg-rose-900');
+        icon.className = 'fa-solid fa-triangle-exclamation text-rose-400 text-base';
+      } else {
+        toast.className = toast.className.replace('bg-rose-900', 'bg-slate-900');
+        icon.className = 'fa-solid fa-circle-info text-teal-400 text-base';
+      }
+
+      toast.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
+      }, 3200);
+    }
+
+    function loadUserImage(file) {
+      if (!file || !file.type.startsWith('image/')) {
+        showToast('Seleccione un archivo de imagen válido', true);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          state.image = img;
+          state.imageLoaded = true;
+          emptyState.style.display = 'none';
+          
+          // Reset points and recalibrate on new image
+          state.woundPolygon = [];
+          state.calibration.points = [];
+          initCanvasDimensions();
+          redrawCanvas();
+          showToast('Imagen cargada. Marque el testigo o dibuje el contorno.');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    imageInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        loadUserImage(e.target.files[0]);
+      }
+    });
+
+    // Drag and Drop Image Support
+    const canvasViewport = document.getElementById('canvasViewport');
+    canvasViewport.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      canvasViewport.classList.add('ring-2', 'ring-teal-400');
+    });
+    canvasViewport.addEventListener('dragleave', () => {
+      canvasViewport.classList.remove('ring-2', 'ring-teal-400');
+    });
+    canvasViewport.addEventListener('drop', (e) => {
+      e.preventDefault();
+      canvasViewport.classList.remove('ring-2', 'ring-teal-400');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        loadUserImage(e.dataTransfer.files[0]);
+      }
+    });
+
+    // Demo Canvas Synthetic Wound Generator
+    function generateSyntheticWoundImage() {
+      const demoCanvas = document.createElement('canvas');
+      demoCanvas.width = 800;
+      demoCanvas.height = 600;
+      const dctx = demoCanvas.getContext('2d');
+
+      // Healthy perilesional skin gradient
+      const skinGrad = dctx.createLinearGradient(0, 0, 800, 600);
+      skinGrad.addColorStop(0, '#f2d6c9');
+      skinGrad.addColorStop(1, '#e4beab');
+      dctx.fillStyle = skinGrad;
+      dctx.fillRect(0, 0, 800, 600);
+
+      // Erythema / surrounding redness
+      dctx.beginPath();
+      dctx.ellipse(400, 310, 190, 150, 0.1, 0, Math.PI * 2);
+      dctx.fillStyle = 'rgba(219, 76, 76, 0.35)';
+      dctx.filter = 'blur(20px)';
+      dctx.fill();
+      dctx.filter = 'none';
+
+      // Wound Bed: Granulation, Slough, and Necrosis
+      dctx.beginPath();
+      dctx.ellipse(400, 310, 140, 105, 0.08, 0, Math.PI * 2);
+      dctx.fillStyle = '#b91c1c'; // Deep Granulation Red
+      dctx.fill();
+
+      // Slough patches (Yellowish Fibrin)
+      dctx.beginPath();
+      dctx.ellipse(370, 280, 55, 45, 0.4, 0, Math.PI * 2);
+      dctx.fillStyle = '#d97706'; // Slough amber
+      dctx.fill();
+
+      dctx.beginPath();
+      dctx.ellipse(430, 340, 45, 30, -0.2, 0, Math.PI * 2);
+      dctx.fillStyle = '#ca8a04';
+      dctx.fill();
+
+      // Necrotic / Dark dry slough core
+      dctx.beginPath();
+      dctx.ellipse(390, 330, 30, 22, 0.3, 0, Math.PI * 2);
+      dctx.fillStyle = '#261a1a'; // Necrotic black
+      dctx.fill();
+
+      // Epithelial edge ring
+      dctx.lineWidth = 6;
+      dctx.strokeStyle = 'rgba(244, 114, 182, 0.6)';
+      dctx.stroke();
+
+      // Synthetic Metric Reference Ruler (1 cm sticker)
+      dctx.fillStyle = '#ffffff';
+      dctx.fillRect(120, 420, 110, 50);
+      dctx.strokeStyle = '#334155';
+      dctx.lineWidth = 2;
+      dctx.strokeRect(120, 420, 110, 50);
+
+      // 1 cm line markings (exactly 80 px = 1.0 cm)
+      dctx.fillStyle = '#0f172a';
+      dctx.fillRect(135, 435, 80, 4);
+      dctx.fillRect(135, 425, 2, 24);
+      dctx.fillRect(215, 425, 2, 24);
+
+      dctx.font = 'bold 12px Inter, sans-serif';
+      dctx.fillStyle = '#0f172a';
+      dctx.fillText('1 cm', 160, 460);
+
+      const img = new Image();
+      img.onload = () => {
+        state.image = img;
+        state.imageLoaded = true;
+        emptyState.style.display = 'none';
+
+        // Pre-calibrate demo ruler (80 px = 1 cm)
+        state.calibration.points = [
+          { x: 135 * (canvas.width / 800), y: 435 * (canvas.height / 600) },
+          { x: 215 * (canvas.width / 800), y: 435 * (canvas.height / 600) }
+        ];
+        computeCalibration();
+
+        // Pre-trace wound points for immediate clinical interaction
+        const cx = 400 * (canvas.width / 800);
+        const cy = 310 * (canvas.height / 600);
+        const rx = 140 * (canvas.width / 800);
+        const ry = 105 * (canvas.height / 600);
+        
+        state.woundPolygon = [];
+        for (let a = 0; a < Math.PI * 2; a += 0.35) {
+          const wobble = 1 + (Math.sin(a * 4) * 0.05);
+          state.woundPolygon.push({
+            x: cx + Math.cos(a) * rx * wobble,
+            y: cy + Math.sin(a) * ry * wobble
+          });
+        }
+
+        redrawCanvas();
+        computePlanimetryMetrics();
+        analyzeBedColorimetry();
+        computeClinicalRecommendations();
+        showToast('Caso Demo clínico cargado correctamente.');
+      };
+      img.src = demoCanvas.toDataURL();
+    }
+
+    btnLoadDemo.addEventListener('click', generateSyntheticWoundImage);
+
+    btnToolCalibrate.addEventListener('click', () => {
+      state.activeTool = 'calibrate';
+      btnToolCalibrate.classList.add('bg-teal-600', 'text-white', 'shadow-xs');
+      btnToolCalibrate.classList.remove('text-slate-700');
+      btnToolWound.classList.remove('bg-teal-600', 'text-white', 'shadow-xs');
+      btnToolWound.classList.add('text-slate-700');
+
+      modeIcon.className = 'fa-solid fa-ruler text-teal-600';
+      modeDescription.innerText = 'Modo Calibración: Haga clic en los extremos de su testigo (1 cm o medida deseada).';
+    });
+
+    btnToolWound.addEventListener('click', () => {
+      state.activeTool = 'wound';
+      btnToolWound.classList.add('bg-teal-600', 'text-white', 'shadow-xs');
+      btnToolWound.classList.remove('text-slate-700');
+      btnToolCalibrate.classList.remove('bg-teal-600', 'text-white', 'shadow-xs');
+      btnToolCalibrate.classList.add('text-slate-700');
+
+      modeIcon.className = 'fa-solid fa-draw-polygon text-teal-600';
+      modeDescription.innerText = 'Modo Delimitar: Haga clics sucesivos alrededor del lecho de la lesión para cerrar el polígono.';
+    });
+
+    btnUndoPoint.addEventListener('click', () => {
+      if (state.activeTool === 'wound' && state.woundPolygon.length > 0) {
+        state.woundPolygon.pop();
+        redrawCanvas();
+        computePlanimetryMetrics();
+      } else if (state.activeTool === 'calibrate' && state.calibration.points.length > 0) {
+        state.calibration.points.pop();
+        redrawCanvas();
+      }
+    });
+
+    btnClearWound.addEventListener('click', () => {
+      state.woundPolygon = [];
+      redrawCanvas();
+      computePlanimetryMetrics();
+      resetColorimetryView();
+      showToast('Polígono de la herida reseteado');
+    });
+
+    function getCanvasCoordinates(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+
+      let clientX = e.clientX;
+      let clientY = e.clientY;
+
+      if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      }
+
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+      };
+    }
+
+    function handleCanvasClick(e) {
+      if (!state.imageLoaded) {
+        showToast('Suba una fotografía clínica primero', true);
+        return;
+      }
+
+      const pt = getCanvasCoordinates(e);
+
+      if (state.activeTool === 'calibrate') {
+        if (state.calibration.points.length >= 2) {
+          state.calibration.points = [pt];
+        } else {
+          state.calibration.points.push(pt);
+          if (state.calibration.points.length === 2) {
+            computeCalibration();
+            // Automatically switch back to wound drawing mode for user convenience
+            setTimeout(() => {
+              btnToolWound.click();
+            }, 500);
+          }
+        }
+      } else if (state.activeTool === 'wound') {
+        state.woundPolygon.push(pt);
+        computePlanimetryMetrics();
+      }
+
+      redrawCanvas();
+    }
+
+    canvas.addEventListener('click', handleCanvasClick);
+
+    // Redraw Master Pipeline
+    function redrawCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (state.imageLoaded && state.image) {
+        ctx.drawImage(state.image, 0, 0, canvas.width, canvas.height);
+      }
+
+      // Draw Calibration Line if present
+      if (state.calibration.points.length > 0) {
+        ctx.save();
+        ctx.strokeStyle = '#22c55e'; // Green calibration line
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([4, 3]);
+
+        const p0 = state.calibration.points[0];
+        ctx.beginPath();
+        ctx.arc(p0.x, p0.y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#22c55e';
+        ctx.fill();
+        ctx.stroke();
+
+        if (state.calibration.points.length === 2) {
+          const p1 = state.calibration.points[1];
+          ctx.beginPath();
+          ctx.moveTo(p0.x, p0.y);
+          ctx.lineTo(p1.x, p1.y);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(p1.x, p1.y, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Text marker
+          const midX = (p0.x + p1.x) / 2;
+          const midY = (p0.y + p1.y) / 2;
+          ctx.setLineDash([]);
+          ctx.font = 'bold 11px Inter, sans-serif';
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(midX - 25, midY - 18, 50, 16);
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${state.calibration.realDistanceCm} cm`, midX, midY - 6);
+        }
+        ctx.restore();
+      }
+
+      // Draw Wound Polygon Boundary
+      if (state.woundPolygon.length > 0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(state.woundPolygon[0].x, state.woundPolygon[0].y);
+
+        for (let i = 1; i < state.woundPolygon.length; i++) {
+          ctx.lineTo(state.woundPolygon[i].x, state.woundPolygon[i].y);
+        }
+
+        if (state.woundPolygon.length > 2) {
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(20, 184, 166, 0.22)';
+          ctx.fill();
+        }
+
+        ctx.strokeStyle = '#0d9488'; // Teal outline
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Draw individual vertex control nodes
+        state.woundPolygon.forEach((pt, index) => {
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, index === 0 ? 5 : 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = index === 0 ? '#14b8a6' : '#ffffff';
+          ctx.strokeStyle = '#0f766e';
+          ctx.lineWidth = 1.5;
+          ctx.fill();
+          ctx.stroke();
+        });
+
+        ctx.restore();
+      }
+    }
+
+    function computeCalibration() {
+      if (state.calibration.points.length < 2) return;
+
+      const [p1, p2] = state.calibration.points;
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const distPx = Math.sqrt(dx * dx + dy * dy);
+
+      const realCm = parseFloat(calibrationRealLength.value) || 1.0;
+      state.calibration.realDistanceCm = realCm;
+      state.calibration.pixelDistance = distPx;
+      state.calibration.pixelsPerCm = distPx / realCm;
+      state.calibration.isCalibrated = true;
+
+      calibrationStatusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800';
+      calibrationStatusBadge.innerHTML = `<i class="fa-solid fa-check mr-1"></i> Calibrado (${state.calibration.pixelsPerCm.toFixed(1)} px/cm)`;
+      showToast(`Testigo calibrado: 1 cm = ${state.calibration.pixelsPerCm.toFixed(1)} píxeles`);
+
+      computePlanimetryMetrics();
+    }
+
+    calibrationRealLength.addEventListener('change', () => {
+      if (state.calibration.points.length === 2) {
+        computeCalibration();
+      }
+    });
+
+    function computePlanimetryMetrics() {
+      const poly = state.woundPolygon;
+      if (poly.length < 3) {
+        metricArea.innerText = '0.00';
+        metricPerimeter.innerText = '0.0';
+        metricMajorAxis.innerText = '0.0';
+        metricMinorAxis.innerText = '0.0';
+        state.metrics = { areaCm2: 0, perimeterCm: 0, majorAxisCm: 0, minorAxisCm: 0 };
+        return;
+      }
+
+      // Shoelace Area in pixels^2
+      let areaPx = 0;
+      let perimeterPx = 0;
+
+      for (let i = 0; i < poly.length; i++) {
+        const j = (i + 1) % poly.length;
+        areaPx += poly[i].x * poly[j].y;
+        areaPx -= poly[j].x * poly[i].y;
+
+        const segDx = poly[j].x - poly[i].x;
+        const segDy = poly[j].y - poly[i].y;
+        perimeterPx += Math.sqrt(segDx * segDx + segDy * segDy);
+      }
+      areaPx = Math.abs(areaPx) / 2;
+
+      // Conversion factor (default to 20 px/cm if uncalibrated)
+      const pxPerCm = state.calibration.isCalibrated ? state.calibration.pixelsPerCm : 20.0;
+      const areaCm2 = areaPx / (pxPerCm * pxPerCm);
+      const perimeterCm = perimeterPx / pxPerCm;
+
+      // Diameters / Axes estimation (Max distance between any two vertex pairs)
+      let maxDistPx = 0;
+      for (let i = 0; i < poly.length; i++) {
+        for (let j = i + 1; j < poly.length; j++) {
+          const d = Math.hypot(poly[i].x - poly[j].x, poly[i].y - poly[j].y);
+          if (d > maxDistPx) maxDistPx = d;
+        }
+      }
+      const majorAxisCm = maxDistPx / pxPerCm;
+      // Perpendicular Minor Axis approximation based on polygon area: Area ≈ (π/4)*Major*Minor => Minor ≈ 4*Area/(π*Major)
+      let minorAxisCm = 0;
+      if (majorAxisCm > 0) {
+        minorAxisCm = Math.min(majorAxisCm, (4 * areaCm2) / (Math.PI * majorAxisCm));
+      }
+
+      state.metrics = {
+        areaCm2: areaCm2,
+        perimeterCm: perimeterCm,
+        majorAxisCm: majorAxisCm,
+        minorAxisCm: minorAxisCm
+      };
+
+      metricArea.innerText = areaCm2.toFixed(2);
+      metricPerimeter.innerText = perimeterCm.toFixed(1);
+      metricMajorAxis.innerText = majorAxisCm.toFixed(1);
+      metricMinorAxis.innerText = minorAxisCm.toFixed(1);
+    }
+
+    function isPointInPolygon(pt, poly) {
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const xi = poly[i].x, yi = poly[i].y;
+        const xj = poly[j].x, yj = poly[j].y;
+        const intersect = ((yi > pt.y) !== (yj > pt.y)) &&
+                          (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function rgbToHsv(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h, s, v = max;
+      const d = max - min;
+      s = max === 0 ? 0 : d / max;
+      if (max === min) {
+        h = 0;
+      } else {
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+      }
+      return [h * 360, s, v];
+    }
+
+    function analyzeBedColorimetry() {
+      if (!state.imageLoaded || state.woundPolygon.length < 3) {
+        showToast('Trace un contorno de al menos 3 puntos primero', true);
+        return;
+      }
+
+      // Find bounding box of polygon
+      let minX = canvas.width, maxX = 0, minY = canvas.height, maxY = 0;
+      state.woundPolygon.forEach(p => {
+        if (p.x < minX) minX = Math.floor(p.x);
+        if (p.x > maxX) maxX = Math.ceil(p.x);
+        if (p.y < minY) minY = Math.floor(p.y);
+        if (p.y > maxY) maxY = Math.ceil(p.y);
+      });
+
+      minX = Math.max(0, minX);
+      minY = Math.max(0, minY);
+      maxX = Math.min(canvas.width, maxX);
+      maxY = Math.min(canvas.height, maxY);
+
+      const w = maxX - minX;
+      const h = maxY - minY;
+      if (w <= 0 || h <= 0) return;
+
+      const imgData = ctx.getImageData(minX, minY, w, h);
+      const data = imgData.data;
+
+      let granulationCount = 0;
+      let sloughCount = 0;
+      let necroticCount = 0;
+      let epithelialCount = 0;
+      let totalInside = 0;
+
+      // Sample pixels inside polygon bounding box
+      for (let y = 0; y < h; y += 2) {
+        for (let x = 0; x < w; x += 2) {
+          const px = minX + x;
+          const py = minY + y;
+
+          if (isPointInPolygon({ x: px, y: py }, state.woundPolygon)) {
+            totalInside++;
+            const idx = (y * w + x) * 4;
+            const r = data[idx];
+            const g = data[idx + 1];
+            const b = data[idx + 2];
+
+            const [hue, sat, val] = rgbToHsv(r, g, b);
+
+            // Clinical color thresholding
+            if (val < 0.23 || (r < 55 && g < 55 && b < 55)) {
+              // Necrotic / Dark dry eschar
+              necroticCount++;
+            } else if ((hue >= 38 && hue <= 75 && sat > 0.25 && val > 0.4) || (r > 150 && g > 130 && b < 100)) {
+              // Slough / Yellow-fibrinous exudate
+              sloughCount++;
+            } else if ((hue >= 340 || hue <= 25) && sat > 0.32 && val > 0.30) {
+              // Granulation tissue (bright healthy red/pink vascularized bed)
+              granulationCount++;
+            } else if (val > 0.65 && sat < 0.35 && (hue >= 320 || hue <= 35)) {
+              // Pinkish/pearly epithelialization edge
+              epithelialCount++;
+            } else if (r > g + 25 && r > b + 25) {
+              // Fallback reddish granulation
+              granulationCount++;
+            } else {
+              // Mild default granulation or transition slough
+              if (g > b) sloughCount++; else granulationCount++;
+            }
+          }
+        }
+      }
+
+      if (totalInside === 0) return;
+
+      const pGran = Math.round((granulationCount / totalInside) * 100);
+      const pSlough = Math.round((sloughCount / totalInside) * 100);
+      const pNec = Math.round((necroticCount / totalInside) * 100);
+      const pEpi = 100 - (pGran + pSlough + pNec); // balance
+
+      state.colorimetry = {
+        granulation: pGran,
+        slough: pSlough,
+        necrotic: pNec,
+        epithelial: Math.max(0, pEpi)
+      };
+
+      // Update UI Bars
+      barGranulation.style.width = `${pGran}%`;
+      barSlough.style.width = `${pSlough}%`;
+      barNecrotic.style.width = `${pNec}%`;
+      barEpithelial.style.width = `${Math.max(0, pEpi)}%`;
+
+      pctGranulation.innerText = `${pGran}%`;
+      pctSlough.innerText = `${pSlough}%`;
+      pctNecrotic.innerText = `${pNec}%`;
+      pctEpithelial.innerText = `${Math.max(0, pEpi)}%`;
+
+      // Determine predominant tissue
+      const maxVal = Math.max(pGran, pSlough, pNec, pEpi);
+      let pred = 'Granulación';
+      if (maxVal === pNec) pred = 'Necrótico / Escara';
+      else if (maxVal === pSlough) pred = 'Esfacelar / Fibrinoso';
+      else if (maxVal === pEpi) pred = 'Epitelización';
+      
+      predominantTissueBadge.innerText = `${pred} (${maxVal}%)`;
+      colorimetryConfidence.innerText = `N = ${totalInside * 4} px analizados`;
+
+      // Auto-suggest tissue choice in RESVECH form based on colorimetry
+      const resvechTissue = document.getElementById('resvechTissue');
+      if (pNec > 25) resvechTissue.value = "4";
+      else if (pSlough > 70) resvechTissue.value = "3";
+      else if (pSlough >= 25) resvechTissue.value = "2";
+      else if (pGran > 75) resvechTissue.value = "1";
+
+      showToast(`Colorimetría computada: Predominio de tejido ${pred.toLowerCase()}`);
+    }
+
+    btnAnalyzeColor.addEventListener('click', analyzeBedColorimetry);
+
+    function resetColorimetryView() {
+      barGranulation.style.width = '0%';
+      barSlough.style.width = '0%';
+      barNecrotic.style.width = '0%';
+      barEpithelial.style.width = '0%';
+      pctGranulation.innerText = '0%';
+      pctSlough.innerText = '0%';
+      pctNecrotic.innerText = '0%';
+      pctEpithelial.innerText = '0%';
+      predominantTissueBadge.innerText = 'Sin datos';
+      colorimetryConfidence.innerText = 'Esperando trazado';
+    }
+
+    const anatomicalRadios = document.querySelectorAll('input[name="anatomicalLocation"]');
+    const vascularBlock = document.getElementById('vascularBlock');
+    const etiologySelect = document.getElementById('etiologySelect');
+
+    const sectionUPP = document.getElementById('sectionUPP');
+    const sectionVenous = document.getElementById('sectionVenous');
+    const sectionDiabetic = document.getElementById('sectionDiabetic');
+    const sectionAtypical = document.getElementById('sectionAtypical');
+
+    // Anatomical location routing
+    function updateLocationVisibility() {
+      const selectedLocation = document.querySelector('input[name="anatomicalLocation"]:checked').value;
+      state.diagnostic.location = selectedLocation;
+
+      // Update styling of buttons
+      document.querySelectorAll('.location-btn').forEach(btn => {
+        const radio = btn.querySelector('input');
+        if (radio.checked) {
+          btn.classList.add('border-teal-500', 'bg-teal-50/60');
+          btn.classList.remove('bg-white');
+        } else {
+          btn.classList.remove('border-teal-500', 'bg-teal-50/60');
+          btn.classList.add('bg-white');
+        }
+      });
+
+      // Mandatory Vascular Rule: Lower extremity / Leg / Foot requires vascular screening
+      if (selectedLocation === 'leg' || selectedLocation === 'foot' || selectedLocation === 'heel') {
+        vascularBlock.classList.remove('hidden');
+      } else {
+        vascularBlock.classList.add('hidden');
+      }
+
+      // Sensible defaults for etiology based on location
+      if (selectedLocation === 'sacrum' || selectedLocation === 'trochanter') {
+        etiologySelect.value = 'pressure';
+      } else if (selectedLocation === 'foot') {
+        etiologySelect.value = 'diabetic';
+      } else if (selectedLocation === 'leg') {
+        etiologySelect.value = 'venous';
+      }
+      updateEtiologyVisibility();
+    }
+
+    anatomicalRadios.forEach(radio => {
+      radio.addEventListener('change', updateLocationVisibility);
+    });
+
+    // Etiology routing
+    function updateEtiologyVisibility() {
+      const eti = etiologySelect.value;
+      state.diagnostic.etiology = eti;
+
+      sectionUPP.classList.add('hidden');
+      sectionVenous.classList.add('hidden');
+      sectionDiabetic.classList.add('hidden');
+      sectionAtypical.classList.add('hidden');
+
+      if (eti === 'pressure') {
+        sectionUPP.classList.remove('hidden');
+      } else if (eti === 'venous' || eti === 'mixed') {
+        sectionVenous.classList.remove('hidden');
+      } else if (eti === 'diabetic') {
+        sectionDiabetic.classList.remove('hidden');
+      } else if (eti === 'atypical') {
+        sectionAtypical.classList.remove('hidden');
+      }
+    }
+
+    etiologySelect.addEventListener('change', updateEtiologyVisibility);
+
+    // Braden Score Tracker
+    const bradenInput = document.getElementById('bradenInput');
+    const bradenValueBadge = document.getElementById('bradenValueBadge');
+
+    bradenInput.addEventListener('input', () => {
+      const val = parseInt(bradenInput.value);
+      state.diagnostic.braden = val;
+      let label = 'Riesgo Bajo';
+      let colorClass = 'bg-emerald-100 text-emerald-800';
+
+      if (val <= 12) {
+        label = 'Riesgo Muy Alto / Alto';
+        colorClass = 'bg-rose-100 text-rose-800';
+      } else if (val <= 14) {
+        label = 'Riesgo Moderado';
+        colorClass = 'bg-amber-100 text-amber-800';
+      }
+
+      bradenValueBadge.className = `text-xs font-bold px-2 py-1 rounded ${colorClass}`;
+      bradenValueBadge.innerText = `${val} (${label})`;
+    });
+
+    // Pain range tracker
+    const painScore = document.getElementById('painScore');
+    const painScoreValue = document.getElementById('painScoreValue');
+    painScore.addEventListener('input', () => {
+      painScoreValue.innerText = painScore.value;
+    });
+
+    // Infection / NERDS & STONEES Tracker
+    const infectionCheckboxes = document.querySelectorAll('.infection-check');
+    const infectionStatusBadge = document.getElementById('infectionStatusBadge');
+
+    function updateInfectionStatus() {
+      let nerdsCount = 0;
+      let stoneesCount = 0;
+
+      if (document.getElementById('nerdNonHealing').checked) nerdsCount++;
+      if (document.getElementById('nerdExudate').checked) nerdsCount++;
+      if (document.getElementById('nerdRedTissue').checked) nerdsCount++;
+      if (document.getElementById('nerdDebris').checked) nerdsCount++;
+      if (document.getElementById('nerdSmell').checked) nerdsCount++;
+
+      if (document.getElementById('stoneeSize').checked) stoneesCount++;
+      if (document.getElementById('stoneeTemp').checked) stoneesCount++;
+      if (document.getElementById('stoneeOs').checked) stoneesCount++;
+      if (document.getElementById('stoneeNew').checked) stoneesCount++;
+      if (document.getElementById('stoneeErythema').checked) stoneesCount++;
+      if (document.getElementById('stoneeSmell').checked) stoneesCount++;
+
+      if (stoneesCount >= 1) {
+        infectionStatusBadge.className = 'text-xs font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800 animate-pulse';
+        infectionStatusBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> Infección Diseminada / Tisular (${stoneesCount} STONEES)`;
+      } else if (nerdsCount >= 2) {
+        infectionStatusBadge.className = 'text-xs font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800';
+        infectionStatusBadge.innerHTML = `<i class="fa-solid fa-bacteria mr-1"></i> Infección Local / Biofilm Activo (${nerdsCount} NERDS)`;
+      } else {
+        infectionStatusBadge.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800';
+        infectionStatusBadge.innerHTML = `<i class="fa-solid fa-check mr-1"></i> Colonización controlada`;
+      }
+    }
+
+    infectionCheckboxes.forEach(chk => {
+      chk.addEventListener('change', updateInfectionStatus);
+    });
+
+    // RESVECH 2.0 Dynamic Score Computation
+    const resvechElements = [
+      'resvechTissue', 'resvechExudate', 'resvechEdge',
+      'resvechSkin', 'resvechDepth', 'resvechTunnel'
+    ];
+    const resvechScoreBadge = document.getElementById('resvechScoreBadge');
+
+    function computeResvechScore() {
+      let total = 0;
+      resvechElements.forEach(id => {
+        const val = parseInt(document.getElementById(id).value) || 0;
+        total += val;
+      });
+
+      // Factor in area score (RESVECH standard: 0 pts <1cm2, 2 pts 1-4cm2, 4 pts 4-16cm2, 6 pts >16cm2)
+      const area = state.metrics.areaCm2;
+      let areaPts = 0;
+      if (area > 16) areaPts = 6;
+      else if (area > 4) areaPts = 4;
+      else if (area > 1) areaPts = 2;
+      total += areaPts;
+
+      state.diagnostic.resvechTotal = total;
+      resvechScoreBadge.innerText = `RESVECH 2.0: ${total} / 35 pts (${total > 20 ? 'Severo / Desfavorable' : total > 10 ? 'Intermedio' : 'Favorable'})`;
+    }
+
+    resvechElements.forEach(id => {
+      document.getElementById(id).addEventListener('change', computeResvechScore);
+    });
+
+    function computeClinicalRecommendations() {
+      computeResvechScore();
+
+      const eti = etiologySelect.value;
+      const itb = document.getElementById('itbSelect').value;
+      const loc = document.querySelector('input[name="anatomicalLocation"]:checked').value;
+      const exudateLevel = document.getElementById('resvechExudate').value;
+      const tissueLevel = document.getElementById('resvechTissue').value;
+      const skinLevel = document.getElementById('resvechSkin').value;
+      const painVal = parseInt(painScore.value);
+
+      // Check infection status
+      const hasStonees = document.getElementById('stoneeSize').checked ||
+                         document.getElementById('stoneeTemp').checked ||
+                         document.getElementById('stoneeOs').checked ||
+                         document.getElementById('stoneeNew').checked ||
+                         document.getElementById('stoneeErythema').checked ||
+                         document.getElementById('stoneeSmell').checked;
+
+      const hasNerds = document.getElementById('nerdNonHealing').checked ||
+                       document.getElementById('nerdExudate').checked ||
+                       document.getElementById('nerdRedTissue').checked ||
+                       document.getElementById('nerdDebris').checked ||
+                       document.getElementById('nerdSmell').checked;
+
+      const safetyBox = document.getElementById('safetyAlertContainer');
+      const alerts = [];
+
+      // 1. SAFETY CHECKS & CONTRAINDICATIONS
+      if ((loc === 'leg' || loc === 'foot') && itb === 'severe') {
+        alerts.push({
+          type: 'danger',
+          title: 'CONTRAINDICACIÓN ABSOLUTA DE COMPRESIÓN',
+          msg: 'ITB < 0.5 o isquemia severa confirmada. La terapia compresiva está terminantemente contraindicada por riesgo inminente de necrosis. Prohibido desbridar escaras secas sin previo estudio y revascularización vascular.'
+        });
+      }
+
+      if (eti === 'atypical' && (document.getElementById('atypicalPathergy').checked || document.getElementById('atypicalViolaceous').checked)) {
+        alerts.push({
+          type: 'warning',
+          title: 'ALERTA DE PATERGIA EN SOSPECHA DE PIODERMA GAN GRENOSO',
+          msg: 'EVITAR desbridamiento cortante/quirúrgico y suturas invasivas. En pioderma gangrenoso el trauma tisular desencadena necrosis acelerada. El pilar debe ser corticoterapia sistémica / inmunosupresión y apósitos atraumáticos.'
+        });
+      }
+
+      // Display safety alerts
+      if (alerts.length > 0) {
+        safetyBox.classList.remove('hidden');
+        safetyBox.innerHTML = alerts.map(a => `
+          <div class="flex items-start space-x-3 p-3 rounded-xl ${a.type === 'danger' ? 'bg-red-50 border-2 border-red-400 text-red-900' : 'bg-amber-50 border-2 border-amber-400 text-amber-900'}">
+            <i class="fa-solid fa-triangle-exclamation text-xl mt-0.5 ${a.type === 'danger' ? 'text-red-600' : 'text-amber-600'}"></i>
+            <div>
+              <h4 class="font-bold text-xs uppercase tracking-wide">${a.title}</h4>
+              <p class="text-xs mt-0.5 leading-relaxed">${a.msg}</p>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        safetyBox.classList.add('hidden');
+      }
+
+      // 2. PILLAR 1: Debridement & Cleansing (D in DOMINATE, T in TIMES)
+      const recDebridement = document.getElementById('recDebridementText');
+      let debHtml = '';
+
+      if (eti === 'atypical') {
+        debHtml = `
+          <p><strong>Limpieza Atraumática:</strong> Irrigación suave con suero salino o solución de Polihexanida (PHMB) a baja presión. <strong>NO frotar con gasas ni realizar curetaje</strong> para evitar reactivación de patergia.</p>
+          <p><strong>Desbridamiento:</strong> Conservador autolítico exclusivamente (hidrogel suave si hay restos fibrinosos).</p>
+        `;
+      } else if (itb === 'severe') {
+        debHtml = `
+          <p><strong>Necrosis Isquémica Seca:</strong> <em>MANTENER SECO</em> mediante pincelado con povidona yodada o solución alcohólica antiséptica. <strong>NO aplicar hidrogeles ni desbridar en seco</strong> hasta revascularización por Cirugía Vascular.</p>
+        `;
+      } else if (tissueLevel >= "4" || state.colorimetry.necrotic > 30) {
+        debHtml = `
+          <p><strong>Desbridamiento Cortante Escalonado:</strong> Retirada selectiva de escara desvitalizada previa analgesia (anestésico tópico o bloqueo local).</p>
+          <p><strong>Coadyuvante Enzimático:</strong> Pomada de Colagenasa (1 vez al día o cada 48h con lecho humedecido). <em>Nota: No mezclar con antisépticos oxidantes o plata iónica.</em></p>
+        `;
+      } else if (tissueLevel >= "2" || state.colorimetry.slough > 25) {
+        debHtml = `
+          <p><strong>Desbridamiento Mecánico / Autolítico:</strong> Limpieza con surfactante específico (Undecilenamidopropil betaína + PHMB) dejándolo actuar durante 10-15 minutos.</p>
+          <p>Aplicación de apósito de hidrofibra de hidrocoloide o alginato cálcico que promueve la autólisis de los esfacelos.</p>
+        `;
+      } else {
+        debHtml = `
+          <p><strong>Lecho Favorable / Granulante:</strong> Limpieza con suero fisiológico templado a baja presión (jeringa de 20ml con aguja 19G / 0.8-1 bar) para no dañar los capilares neoformados.</p>
+        `;
+      }
+      recDebridement.innerHTML = debHtml;
+
+      // 3. PILLAR 2: Infection & Biofilm (I in TIMES, I in DOMINATE)
+      const recInfection = document.getElementById('recInfectionText');
+      let infHtml = '';
+
+      if (hasStonees) {
+        infHtml = `
+          <p class="text-rose-700 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Infección Tisular Profunda / Sospecha Osteomielitis:</p>
+          <p>1. Toma de biopsia tisular o frotis cuantitativo por técnica de Levine (tras lavado previo de la base).</p>
+          <p>2. <strong>Antibioterapia Sistémica Empírica:</strong> Cobertura para <em>S. aureus</em> resistente y bacilos Gram-negativos según mapa microbiológico local.</p>
+          <p>3. Apósito antimicrobiano con plata nanocristalina o tecnología DACC (apósito hidrofóbico captador de bacterias).</p>
+        `;
+      } else if (hasNerds) {
+        infHtml = `
+          <p><strong>Biofilm Activo / Colonización Crítica:</strong></p>
+          <p>Estrategia antibiofilm en 2 pasos: Lavado con solución antiséptica con surfactante + apósito primario con liberación sostenida de plata (Ag+), sulfadiazina argéntica o DACC.</p>
+          <p>Revaluar en 14 días conforme al Consenso IWII. No se precisan antibióticos orales si no hay signos STONEES.</p>
+        `;
+      } else {
+        infHtml = `
+          <p><strong>Flora Comensal Equilibrada:</strong> No precisa antisépticos continuados para evitar citotoxicidad sobre fibroblastos.</p>
+          <p>Si la herida permanece estancada sin infección: considerar apósito con inhibidores de metaloproteinasas (MMP) como tecnología TLC-NOSF (Octasulfato de sacarosa) con evidencia nivel 1A.</p>
+        `;
+      }
+      recInfection.innerHTML = infHtml;
+
+      // 4. PILLAR 3: Moisture Balance & Wound Dressing (M in TIMES, M in DOMINATE)
+      const recMoisture = document.getElementById('recMoistureText');
+      let moisHtml = '';
+
+      if (exudateLevel >= "3") {
+        moisHtml = `
+          <p><strong>Exudado Alto a Muy Alto:</strong></p>
+          <p><strong>Apósito Primario:</strong> Alginato con carboximetilcelulosa (CMC) o apósito de hidrofibra con alta capacidad de retención vertical para evitar maceración perilesional.</p>
+          <p><strong>Apósito Secundario:</strong> Espuma de poliuretano hidrofílica (Foam) o superabsorbente de polímero acrílico.</p>
+          <p><strong>Protección Perilesional Obligatoria:</strong> Película barrera no irritante (polímero de acrilato sin alcohol / spray de barrera cavilon).</p>
+        `;
+      } else if (exudateLevel === "0") {
+        moisHtml = `
+          <p><strong>Lecho Seco / Falta de Humedad:</strong></p>
+          <p>Aporte de humedad exógena con <strong>Hidrogel amorfo</strong> protegido por film de poliuretano semipermeable o hidrocoloide extrafino para facilitar la migración celular queratinocítica.</p>
+        `;
+      } else {
+        moisHtml = `
+          <p><strong>Exudado Moderado (Control Óptimo):</strong></p>
+          <p>Apósito de espuma polimérica (foam con capa de contacto de silicona suave atraumática) con cambios cada 3 a 5 días según saturación.</p>
+        `;
+      }
+
+      if (skinLevel === "2") {
+        moisHtml += `<p class="mt-1 text-amber-700 font-semibold">Bordes Macerados: Aplicar pasta al agua de óxido de zinc o emulsión polimérica en margen de 2 cm.</p>`;
+      }
+      recMoisture.innerHTML = moisHtml;
+
+      // 5. PILLAR 4: Etiological Treatment & Offloading (O & P in DOMINATE)
+      const recEtiology = document.getElementById('recEtiologyText');
+      let etiHtml = '';
+
+      if (eti === 'venous' || (loc === 'leg' && itb === 'normal')) {
+        etiHtml = `
+          <p class="text-teal-800 font-bold"><i class="fa-solid fa-compress"></i> Terapia Compresiva Dosificada (GOLD STANDARD):</p>
+          <p>Al tener un ITB normal (&ge;0.9), está <strong>formalmente indicada la compresión multicapa o de tracción corta inelástica</strong> logrando una presión resting de 40 mmHg a nivel maleolar.</p>
+          <p><em>ADVERTENCIA:</em> Las vendas elásticas de crepé estándar NO ejercen presión de reposo eficaz y están desaconsejadas.</p>
+        `;
+      } else if (eti === 'pressure') {
+        const bradenVal = state.diagnostic.braden;
+        etiHtml = `
+          <p><strong>Alivio de Presión (Offloading):</strong></p>
+          <p>Uso indispensable de Superficie Especial de Manejo de la Presión (SEMP dinámico/colchón de aire alternante si Braden &le; 14).</p>
+          <p>Cambios posturales reglados cada 2-3 horas y taloneras de suspensión libre en decúbito supinatorio.</p>
+          <p><strong>Soporte Nutricional:</strong> Suplementación hiperproteica enriquecida con arginina, zinc y antioxidantes si albúmina &lt; 3.0 g/dL.</p>
+        `;
+      } else if (eti === 'diabetic') {
+        etiHtml = `
+          <p><strong>Descarga Completa Obligatoria:</strong> Yeso de contacto total (Total Contact Cast - TCC) o bota rígida de descarga removible. Prohibido apoyar sin férula.</p>
+          <p>Control metabólico glucémico estricto (HbA1c &lt; 7.0-7.5%).</p>
+          <p>Exploración con sonda metálica roma (Probe-to-bone): descartar osteomielitis profunda subyacente.</p>
+        `;
+      } else if (eti === 'arterial' || itb === 'moderate' || itb === 'severe') {
+        etiHtml = `
+          <p class="text-rose-800 font-bold">Patología Arterial Periférica:</p>
+          <p>Derivación preferente/urgente a Angiología y Cirugía Vascular para arteriografía y planteamiento de revascularización (bypass / angioplastia).</p>
+          <p>Extremidad en posición neutra o ligera declive. <strong>CONTRAINDICADA COMPRESIÓN.</strong></p>
+        `;
+      } else if (eti === 'atypical') {
+        etiHtml = `
+          <p><strong>Terapia Inmunomoduladora Sistémica:</strong> Prednisona oral 0.5 - 1 mg/kg/día o pulsos según prescripción dermatológica/reumatológica.</p>
+          <p>Estudio de patología inflamatoria intestinal (Crohn/Colitis ulcerosa) y despistaje hematológico.</p>
+        `;
+      } else {
+        etiHtml = `
+          <p>Seguimiento de protocolo TIME y protección frente a fricción y cizallamiento con hidrocoloides o apósitos hidrocelulares.</p>
+        `;
+      }
+      recEtiology.innerHTML = etiHtml;
+
+      // Scroll smoothly to results
+      document.getElementById('treatmentResultsSection').scrollIntoView({ behavior: 'smooth' });
+      showToast('Recomendaciones clínicas y farmacotópicas generadas con éxito.');
+    }
+
+    btnComputeRecommendations.addEventListener('click', computeClinicalRecommendations);
+
+    btnPrintReport.addEventListener('click', () => {
+      // Set timestamp and ID for clinical records
+      const now = new Date();
+      document.getElementById('printTimestamp').innerText = `Fecha y Hora: ${now.toLocaleDateString('es-ES')} ${now.toLocaleTimeString('es-ES')}`;
+      const patientId = document.getElementById('patientIdInput').value || 'S/D';
+      document.getElementById('printRecordId').innerText = `HIST-${patientId}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      // Guarantee calculations are fresh
+      computePlanimetryMetrics();
+      computeClinicalRecommendations();
+
+      // Trigger native browser print
+      window.print();
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initCanvasDimensions();
+      updateLocationVisibility();
+      updateEtiologyVisibility();
+      updateInfectionStatus();
+      computeResvechScore();
+      
+      // Auto-load demo for an instantaneous rich clinical experience
+      setTimeout(() => {
+        generateSyntheticWoundImage();
+      }, 300);
+    });
+
+  </script>
+</body>
+</html>
